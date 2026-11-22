@@ -4,7 +4,7 @@ from sys import exit
 import numpy as np
 import pygame
 
-from propagator import OscillatorMatrix, coupledOscillator
+from propagator import OscillatorMatrix, coupledOscillator, predatorPrey
 from simulation import Simulation
 
 TIME_ELAPSED=0
@@ -13,7 +13,7 @@ Start=False
 pygame.init()
 GAME_WIDTH=1000
 GAME_HEIGHT=300
-NUM_OSCILLATORS=3
+NUM_OSCILLATORS=4
 SCALING=100 ##Going from meters to pixels on screen.
 SHIFT=GAME_WIDTH/(2.5*NUM_OSCILLATORS) ##Initial shift for first block from left of the screen
 window=pygame.display.set_mode((GAME_WIDTH,GAME_HEIGHT))
@@ -28,6 +28,7 @@ text = font.render(
 text_rect = text.get_rect(
     center=(GAME_WIDTH // 2, 40)
 )
+
 class Block:
     def __init__(self,identity :int,pos :float):
         self.id=identity
@@ -37,34 +38,33 @@ class Block:
     def updatePos(self,pos):
         self.pos=pos
         self.rect.x=round(self.realToPixel(self.id, pos))
-    def updateVel(self,vel):
-        self.vel=vel
     def realToPixel(self,identity,pos):
         return SHIFT+ identity*(int(GAME_WIDTH/NUM_OSCILLATORS))+pos*SCALING
     def draw(self):
         pygame.draw.rect(window,"red",self.rect)
 blocks=[]
-omega3 = np.sqrt(2 + np.sqrt(2))
 forces = [
     lambda t:0.0,
     lambda t:0.0,
     lambda t:0.0,
     lambda t:0.0,
-    lambda t:np.sin(omega3*t) if t<3  else 0,
+    lambda t:np.sin(t),
+    lambda t:0.0,
+    lambda t:0.0,
     lambda t:0.0
 ]
+initial=np.array([.5,.5,.5,.5])
+for i,s in enumerate(initial):
+    blocks.append(Block(i,s))
 
-blocks.append(Block(0,.5))
-blocks.append(Block(1,.5*np.sqrt(2)))
-blocks.append(Block(2,.5))
 
-mass=np.array([5,5,5])
-k=np.array([5,5,5,5])
+mass=np.array([1,1,1,1])
+k=np.array([5,5,5,5,5])
 A=OscillatorMatrix(mass,k)
 initialTime=0
 initialState=np.concatenate([np.array([block.pos for block in blocks]),np.zeros(NUM_OSCILLATORS)])
-propagator=partial(coupledOscillator,force=forces,A=A)
-Oscillator=Simulation(initialTime,initialState,propagator)
+propagator_One=partial(coupledOscillator,force=forces,A=A)
+Oscillator=Simulation(initialTime,initialState,propagator_One)
 while State:
     dt = clock.tick(60) / 1000.0
     for event in pygame.event.get():
@@ -86,6 +86,7 @@ while State:
         posUpdate = Oscillator.getState()
         for i, block in enumerate(blocks):
             block.updatePos(posUpdate[i])
+
     window.fill("black")
     if not Start:
         window.blit(text, text_rect)

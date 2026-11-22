@@ -25,3 +25,9 @@ def OscillatorMatrix(m:NDArray[np.float64],k:NDArray[np.float64]):
     [np.zeros((n, n)), np.eye(n)],
     [B, np.zeros((n, n))]])
     return A
+
+def predatorPrey(t,y,alpha,beta,delta,gamma):
+    '''Return predatorPrey f(t,y). '''
+    xprime=alpha*y[0]-beta*y[0]*y[1]
+    yprime=delta*y[0]*y[1]-gamma*y[1]
+    return np.array([xprime,yprime])
