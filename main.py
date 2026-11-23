@@ -10,97 +10,15 @@ from simulation import Simulation
 
 NUM_OSCILLATORS=3
 running=False
-def simulateOscillator():
-    '''A pygame simulation for the oscillators. '''
-    State=True
-    Start=False
-    pygame.init()
-    GAME_WIDTH=1000
-    GAME_HEIGHT=500
-    SCALING=100 ##Going from meters to pixels on screen.
-    SHIFT=GAME_WIDTH/(2.5*NUM_OSCILLATORS) ##Initial shift for first block from left of the screen
-    window=pygame.display.set_mode((GAME_WIDTH,GAME_HEIGHT))
-    pygame.display.set_caption("Coupled Oscillators")
-    clock=pygame.time.Clock()
-    font = pygame.font.SysFont(None, 30)
-    text = font.render(
-        "Press SPACE to start simulation",
-        True,
-        "white"
-    )
-    text_rect = text.get_rect(
-        center=(GAME_WIDTH // 2, 40)
-    )
-
-    class Block:
-        def __init__(self,identity :int,pos :float):
-            self.id=identity
-            self.pos=pos 
-            self.pixelX=self.realToPixel(identity,pos)
-            self.rect=pygame.Rect(self.pixelX,int(GAME_HEIGHT/2),50,50)
-        def updatePos(self,pos):
-            self.pos=pos
-            self.rect.x=round(self.realToPixel(self.id, pos))
-        def realToPixel(self,identity,pos):
-            return SHIFT+ identity*(int(GAME_WIDTH/NUM_OSCILLATORS))+pos*SCALING
-        def draw(self):
-            pygame.draw.rect(window,"dark green",self.rect)
-    blocks=[]
-    forces = [
-        lambda t:0.0,
-        lambda t:0.0,
-        lambda t:0.0,
-        lambda t:0.0,
-        lambda t:0.0,
-        lambda t:0.0,
-    ]
-    initial=np.array([-.5,0,.5])
-    for i,s in enumerate(initial):
-        blocks.append(Block(i,s))
-    mass=np.array([1,1,1])
-    k=np.array([5,5,5,5])
-    A=OscillatorMatrix(mass,k)
-    initialTime=0
-    initialState=np.concatenate([np.array([block.pos for block in blocks]),np.zeros(NUM_OSCILLATORS)])
-    propagator_One=partial(coupledOscillator,force=forces,A=A)
-    Oscillator=Simulation(initialTime,initialState,propagator_One)
-    while State:
-        dt = clock.tick(60) / 1000.0
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    Start = True
-                    accumulator = 0.0
-                if event.key == pygame.K_x:
-                    pygame.quit()
-                    exit()
-        if Start:
-            accumulator += dt
-            while accumulator >= Oscillator.h:
-                Oscillator.step()
-                accumulator -= Oscillator.h
-            posUpdate = Oscillator.getState()
-            for i, block in enumerate(blocks):
-                block.updatePos(posUpdate[i])
-
-        window.fill("black")
-        if not Start:
-            window.blit(text, text_rect)
-        for block in blocks:
-            block.draw()
-        pygame.display.flip()
 
 def vPythonOscillator(sim):
-
+    RADIUS=.15
     scene = canvas(
         title="Coupled Oscillators",width=1400,height=800,background=color.black)
     scene.center = vector(0, 0, 0)
     scene.range = 8
     scene.autoscale = False
-    scene.forward = vector(0, 0, -5)
+    scene.forward = vector(0, 0, -2)
     d = 2.0
 
     left_wall_x = -(NUM_OSCILLATORS + 1) * d / 2
@@ -118,9 +36,21 @@ def vPythonOscillator(sim):
     
     scene.bind('keydown',handleEvent)
     balls=[]
-    for i in range(NUM_OSCILLATORS):
+    springs=[]
+    for i in range(NUM_OSCILLATORS+1):
         equilibrium_x = (i - (NUM_OSCILLATORS - 1)/2) * d
-        balls.append(sphere(pos=vector(equilibrium_x + sim.getState()[i], 0, 0), radius=0.3,    color=color.red))
+
+        if i==0:
+            balls.append(sphere(pos=vector(equilibrium_x + sim.getState()[i], 0, 0), radius=.5,color=color.red))
+            displacement=vector((balls[0].pos.x- balls[0].radius)-(wall.pos.x+wall.length/2),0,0)
+            springs.append(helix(pos=vector(wall.pos.x+wall.length/2,0,0),axis=displacement,radius=RADIUS,thickness=0.05,coils=10))
+        elif i!=NUM_OSCILLATORS:
+            balls.append(sphere(pos=vector(equilibrium_x + sim.getState()[i], 0, 0), radius=.5, color=color.red))
+            springs.append(helix(pos=vector(balls[i-1].pos.x+balls[i-1].radius,0,0),axis=vector((balls[i].pos.x -balls[i].radius)-(balls[i-1].pos.x+balls[i-1].radius),0,0),radius=RADIUS,thickness=0.05,coils=10))
+        else:
+            springs.append(helix(pos=vector(balls[i-1].pos.x+balls[i-1].radius,0,0),axis=vector(wall2.pos.x-(wall2.length/2)-(balls[i-1].pos.x+balls[i-1].radius),0,0),radius=RADIUS,thickness=0.05,coils=10))
+
+
     while True:
         rate(60)
         if running:
@@ -128,8 +58,23 @@ def vPythonOscillator(sim):
                 sim.step()
             state=sim.getState()
             for i, ball in enumerate(balls):
-                equilibrium_x = (i - (NUM_OSCILLATORS - 1)/2) * d
-                ball.pos.x = equilibrium_x + state[i]
+                if i==0:
+                    equilibrium_x = (i - (NUM_OSCILLATORS - 1)/2) * d
+                    ball.pos.x=equilibrium_x+state[i]
+                    springs[i].axis=vector((ball.pos.x-RADIUS)-(wall.pos.x+wall.length/2),0,0)
+                    springs[i+1].pos.x=ball.pos.x+RADIUS
+                elif i!=len(balls)-1:
+                    equilibrium_x = (i - (NUM_OSCILLATORS - 1)/2) * d
+                    ball.pos.x = equilibrium_x + state[i]
+                    springs[i].axis=vector(balls[i].pos.x-RADIUS-springs[i].pos.x,0,0)
+                    springs[i+1].pos.x=ball.pos.x+RADIUS
+                else:
+                    equilibrium_x = (i - (NUM_OSCILLATORS - 1)/2) * d
+                    ball.pos.x=equilibrium_x+state[i]
+                    springs[i].axis=vector(balls[i].pos.x-RADIUS-springs[i].pos.x,0,0)
+                    springs[i+1].pos.x=ball.pos.x+RADIUS
+                    springs[i+1].axis=vector(wall2.pos.x-(wall2.length/2)-springs[i+1].pos.x,0,0)
+##update axis of current spring, update position of next spring.
 
 def main():
     mass=np.array([1,1,1])
@@ -145,7 +90,7 @@ def main():
     A=OscillatorMatrix(mass,k)
     propagator=partial(coupledOscillator,force=forces,A=A)
     initialTime=0
-    initialState=np.array([.5,-.5*np.sqrt(2),.5])
+    initialState=np.array([0,0,0])
     initialState=np.concatenate([initialState,np.zeros(NUM_OSCILLATORS)])
     oscillatorSimulation=Simulation(initialTime,initialState,propagator)
     vPythonOscillator(oscillatorSimulation)
