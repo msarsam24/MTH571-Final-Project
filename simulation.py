@@ -1,5 +1,5 @@
 class Simulation:
-    h=1/600 ##Step size for the simulation
+    h=1/1200 ##Step size for the simulation
     def __init__(self,time,state,propagator):
         self.time=time
         self.state=state
