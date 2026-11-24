@@ -31,3 +31,6 @@ def predatorPrey(t,y,alpha,beta,delta,gamma):
     xprime=alpha*y[0]-beta*y[0]*y[1]
     yprime=delta*y[0]*y[1]-gamma*y[1]
     return np.array([xprime,yprime])
+
+def lorentzAttractor():
+    return 

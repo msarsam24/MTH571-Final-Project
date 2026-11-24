@@ -1,14 +1,12 @@
 from functools import partial
-from sys import exit
 
 import numpy as np
-import pygame
 from vpython import *
 
 from propagator import OscillatorMatrix, coupledOscillator
 from simulation import Simulation
 
-NUM_OSCILLATORS=3
+NUM_OSCILLATORS=5
 running=False
 
 def vPythonOscillator(sim):
@@ -78,24 +76,31 @@ def vPythonOscillator(sim):
 ##update axis of current spring, update position of next spring.
 
 def main():
-    mass=np.array([1,1,1])
-    k=np.array([3,3,3,3])
+    mass=np.array([1,1,1,1,1])
+    k=np.array([3,3,3,3,3,3])
     A=OscillatorMatrix(mass,k)
-    eig=np.linalg.eigvalsh(A[3:6,0:3])
+    eig=np.linalg.eigvalsh(A[5:10,0:5])
     forces = [
         lambda t:0.0,
         lambda t:0.0,
         lambda t:0.0,
         lambda t:0.0,
-        lambda t:np.sin(np.sqrt(-eig[0]*t)),
+        lambda t:0.0,
+        lambda t:0.0,
+        lambda t:0.0,
+        lambda t:0.0,
+        lambda t:3*np.exp(-.5*t)*np.sin(np.sqrt(-eig[1])*t),
         lambda t:0.0,
     ]
     A=OscillatorMatrix(mass,k)
     propagator=partial(coupledOscillator,force=forces,A=A)
     initialTime=0
-    initialState=np.array([1,1,1])
+    initialState=np.array([0,0,0,0,0])
     initialState=np.concatenate([initialState,np.zeros(NUM_OSCILLATORS)])
     oscillatorSimulation=Simulation(initialTime,initialState,propagator)
     vPythonOscillator(oscillatorSimulation)
 if __name__ == "__main__":
     main()
+
+
+#make_trail=True,trail_radius=.05,trail_color=color.red,trail_type="curve",retain=500
