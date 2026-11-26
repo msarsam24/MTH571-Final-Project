@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 from vpython import *
 
-from propagator import OscillatorMatrix, coupledOscillator
+from propagator import OscillatorMatrix, coupledOscillator, lorentzAttractor
 from simulation import Simulation
 
 NUM_OSCILLATORS=5
@@ -74,6 +74,28 @@ def vPythonOscillator(sim):
                     springs[i+1].pos.x=ball.pos.x+RADIUS
                     springs[i+1].axis=vector(wall2.pos.x-(wall2.length/2)-springs[i+1].pos.x,0,0)
 ##update axis of current spring, update position of next spring.
+def LorentzAttractorSimulation(sim):
+    scene = canvas(
+        title="Coupled Oscillators",width=1400,height=800,background=color.black)
+    scene.center = vector(0, 0, 0)
+    scene.range = 8
+    scene.autoscale = False
+    scene.forward = vector(0, 0, -2)
+    initialState=sim.getState()
+    particle=sphere(position=vector(initialState[0],initialState[1],initialState[2]),radius=1,make_trail=True,trail_radius=.1,trail_color=color.yellow,trail_type="curve",retain=1000,color=color.cyan)
+    def handleEvent(evt):
+        global running 
+        if evt.key == ' ':
+            running = not running
+    scene.bind('keydown',handleEvent)
+    counter=0
+    while True:
+        rate(120)
+        if running:
+            for _ in range(10):
+                sim.step()
+            state=sim.getState()
+            particle.pos=vector(state[0],state[1],state[2])
 
 def main():
     mass=np.array([1,1,1,1,1])
@@ -94,13 +116,17 @@ def main():
     ]
     A=OscillatorMatrix(mass,k)
     propagator=partial(coupledOscillator,force=forces,A=A)
+    LorentzPropagator=partial(lorentzAttractor,sigma=10,rho=28,beta=8/3)
     initialTime=0
-    initialState=np.array([0,0,0,0,0])
-    initialState=np.concatenate([initialState,np.zeros(NUM_OSCILLATORS)])
+    initialState=np.array([1,0,0])
+    #initialState=np.concatenate([initialState,np.zeros(NUM_OSCILLATORS)])
     oscillatorSimulation=Simulation(initialTime,initialState,propagator)
-    vPythonOscillator(oscillatorSimulation)
+    LorentzSimulation=Simulation(initialTime,initialState,LorentzPropagator)
+    #vPythonOscillator(oscillatorSimulation)
+    LorentzAttractorSimulation(LorentzSimulation)  
 if __name__ == "__main__":
     main()
+    
 
 
 #make_trail=True,trail_radius=.05,trail_color=color.red,trail_type="curve",retain=500
